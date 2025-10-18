@@ -1,3 +1,3 @@
 
-pacts: main.c
-	gcc -Wall -Wextra -o pacts main.c
+pacts: main.c pacts.c
+	gcc -Wall -Wextra -pedantic -o pacts main.c
