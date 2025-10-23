@@ -4,12 +4,15 @@
 
 int main(void) {
 
-    char *p = "/home/guido/Desktop/code/tracked/pacts/";
-    Path path = pth_new(p);
+    Path path = pth_cwd();
     pth_debug(&path);
     
     Path parent = pth_parent(&path);
     pth_debug(&parent);
+    
+    Path parent_resolved = pth_resolve(&parent);
+    pth_debug(&parent_resolved);
+
 
     printf("\n");
     return 0;

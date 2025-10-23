@@ -56,4 +56,4 @@ PTH_DEF bool str_contains_pth_sep(char *str) {
     return str_contains(str, (int) *PTH_SEP);
 }
 
-#endif // PTH_IMPLEMENTATION
+hg  #endif // PTH_IMPLEMENTATION

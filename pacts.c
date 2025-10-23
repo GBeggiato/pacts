@@ -42,20 +42,33 @@ PTH_DEF bool str_contains_pth_sep(char *str) {
     return str_contains(str, (int) *PTH_SEP);
 }
 
+PTH_DEF void str_chop_last(char *str, int n) {
+    size_t len = strlen(str);
+    memset(str+len-n, 0, n);
+}
+
+// ==============================================================================
+
 typedef struct Path {
     char str[PTH_PATH_MAX_SIZE];
 } Path;
 
-
-/*
- * create a "Path" from "char *"
- *
- * stores the resolved path in "str"
- *
- * fails in case of errors
- */
+// create a "Path" from "char *"
 Path pth_new(char *name){
-    char *resolved = realpath(name, NULL);
+    Path path = {0};
+    int r = snprintf(path.str, PTH_PATH_MAX_SIZE, "%s", name);
+    assert((0 <= r && r+1 < PTH_PATH_MAX_SIZE) && "snprintf failed");
+    return path;
+}
+
+Path pth_copy(Path *p) {
+    Path new = {0};
+    memcpy(&new, p, sizeof(*p));
+    return new;
+}
+
+Path pth_resolve(Path *p) {
+    char *resolved = realpath(p->str, NULL);
     assert(resolved != NULL && "realpath failed");
     Path path = {0};
     int r = snprintf(path.str, PTH_PATH_MAX_SIZE, "%s", resolved);
@@ -64,21 +77,31 @@ Path pth_new(char *name){
     return path;
 }
 
-Path pth_copy(Path *p) {
-    return pth_new(p->str);
+bool pth_is_absolute(Path *p) {
+    char *resolved = realpath(p->str, NULL);
+    assert(resolved != NULL && "realpath failed");
+    return strcmp(resolved, p->str) == 0;
 }
 
 Path pth_parent(Path *child) {
-    Path parent = pth_new(child->str);
+    Path parent = pth_copy(child);
+    // delete last char if it's the separator
     size_t n = strlen(parent.str);
+    char last_char = parent.str[n-1];
+    if (last_char == (int) *PTH_SEP) str_chop_last(parent.str, 1);
+    // return all the stuff up to the last separator
     char *check = strrchr(parent.str, (int) *PTH_SEP);
     if (check == NULL) return parent;
     size_t m = strlen(check);
     assert(m < n);
-    size_t last_char = n - m;
-    memset(parent.str+last_char, 0, m);
+    str_chop_last(parent.str, m);
     return parent;
 }
+
+// Path pth_join(Path *p, char *str) {
+//     Path joined = pth_copy(p);
+//     // TODO: concat strings
+// }
 
 
 Path pth_cwd(void) {
