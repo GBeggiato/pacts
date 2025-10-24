@@ -1,5 +1,6 @@
 
 #include <assert.h>
+#include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -26,6 +27,8 @@
  #define PTH_SEP "/"
 #endif
 
+#define PTH_SEP_INT ((int) *PTH_SEP)
+
 #ifndef PTH_DEF
  #define PTH_DEF static inline
 #endif
@@ -34,30 +37,37 @@
  #define PTH_PATH_MAX_SIZE PATH_MAX
 #endif
 
-PTH_DEF bool str_contains(char *str, int c) {
-    return strchr(str, c) != NULL;
-}
+// PTH_DEF bool str_contains(char *str, int c) {
+//     return strchr(str, c) != NULL;
+// }
 
-PTH_DEF bool str_contains_pth_sep(char *str) {
-    return str_contains(str, (int) *PTH_SEP);
-}
+// PTH_DEF bool str_contains_pth_sep(char *str) {
+//     return str_contains(str, PTH_SEP_INT);
+// }
 
 PTH_DEF void str_chop_last(char *str, int n) {
     size_t len = strlen(str);
     memset(str+len-n, 0, n);
 }
 
-// ==============================================================================
+PTH_DEF void pth_checked_snprintf(char *str, const char *restrict format, ...) {
+    va_list args;
+    va_start(args, format);
+    int r = vsnprintf(str, PTH_PATH_MAX_SIZE, format, args);
+    va_end(args);
+    assert((0 <= r && r+1 < PTH_PATH_MAX_SIZE) && "snprintf failed");
+}
+
 
 typedef struct Path {
     char str[PTH_PATH_MAX_SIZE];
 } Path;
 
+
 // create a "Path" from "char *"
 Path pth_new(char *name){
     Path path = {0};
-    int r = snprintf(path.str, PTH_PATH_MAX_SIZE, "%s", name);
-    assert((0 <= r && r+1 < PTH_PATH_MAX_SIZE) && "snprintf failed");
+    pth_checked_snprintf(path.str, "%s", name);
     return path;
 }
 
@@ -67,12 +77,23 @@ Path pth_copy(Path *p) {
     return new;
 }
 
+void pth_debug(Path *p){
+    printf("%s\n", p->str);
+}
+
+Path pth_cwd(void) {
+    char *cwd = getcwd(NULL, PTH_PATH_MAX_SIZE);
+    assert(cwd != NULL && "getcwd failed");
+    Path pcwd = pth_new(cwd);
+    free(cwd);
+    return pcwd;
+}
+
 Path pth_resolve(Path *p) {
     char *resolved = realpath(p->str, NULL);
     assert(resolved != NULL && "realpath failed");
     Path path = {0};
-    int r = snprintf(path.str, PTH_PATH_MAX_SIZE, "%s", resolved);
-    assert((r >= 0 && r+1 < PTH_PATH_MAX_SIZE) && "snprintf failed");
+    pth_checked_snprintf(path.str, "%s", resolved);
     free(resolved);
     return path;
 }
@@ -88,28 +109,15 @@ Path pth_parent(Path *child) {
     // delete last char if it's the separator
     size_t n = strlen(parent.str);
     char last_char = parent.str[n-1];
-    if (last_char == (int) *PTH_SEP) str_chop_last(parent.str, 1);
+    if (last_char == PTH_SEP_INT) str_chop_last(parent.str, 1);
     // return all the stuff up to the last separator
-    char *check = strrchr(parent.str, (int) *PTH_SEP);
+    char *check = strrchr(parent.str, PTH_SEP_INT);
     if (check == NULL) return parent;
     size_t m = strlen(check);
     assert(m < n);
     str_chop_last(parent.str, m);
     return parent;
 }
-
-// Path pth_join(Path *p, char *str) {
-//     Path joined = pth_copy(p);
-//     // TODO: concat strings
-// }
-
-
-Path pth_cwd(void) {
-    char *cwd = getcwd(NULL, PTH_PATH_MAX_SIZE);
-    assert(cwd != NULL && "getcwd failed");
-    return pth_new(cwd);
-}
-
 
 enum _pth_kind {
     PTH_KIND_FILE = 1,
@@ -141,10 +149,16 @@ bool pth_exists(Path *p) {
     return _pth_is_kind(p, PTH_KIND_THERE);
 }
 
-void pth_debug(Path *p){
-    printf("%s\n", p->str);
+
+Path pth_join(Path *p, char *str) {
+    Path joined = pth_copy(p);
+    size_t len = strlen(joined.str);
+    pth_checked_snprintf(joined.str+len, "%s%s", PTH_SEP, str);
+    return joined;
 }
+
 
 #undef PTH_PATH_MAX_SIZE
 #undef PTH_SEP
+#undef PTH_SEP_INT
 
