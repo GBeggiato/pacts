@@ -77,7 +77,7 @@ Path pth_copy(Path *p) {
     return new;
 }
 
-void pth_debug(Path *p){
+PTH_DEF void pth_debug(Path *p){
     printf("%s\n", p->str);
 }
 
@@ -89,34 +89,32 @@ Path pth_cwd(void) {
     return pcwd;
 }
 
-Path pth_resolve(Path *p) {
+PTH_DEF void pth_resolve(Path *p) {
     char *resolved = realpath(p->str, NULL);
     assert(resolved != NULL && "realpath failed");
-    Path path = {0};
-    pth_checked_snprintf(path.str, "%s", resolved);
+    pth_checked_snprintf(p->str, "%s", resolved);
     free(resolved);
-    return path;
 }
 
-bool pth_is_absolute(Path *p) {
+PTH_DEF bool pth_is_absolute(Path *p) {
     char *resolved = realpath(p->str, NULL);
     assert(resolved != NULL && "realpath failed");
-    return strcmp(resolved, p->str) == 0;
+    bool ans = strcmp(resolved, p->str) == 0;
+    free(resolved);
+    return ans;
 }
 
-Path pth_parent(Path *child) {
-    Path parent = pth_copy(child);
+PTH_DEF void pth_parent(Path *p) {
     // delete last char if it's the separator
-    size_t n = strlen(parent.str);
-    char last_char = parent.str[n-1];
-    if (last_char == PTH_SEP_INT) str_chop_last(parent.str, 1);
+    size_t n = strlen(p->str);
+    char last_char = p->str[n-1];
+    if (last_char == PTH_SEP_INT) str_chop_last(p->str, 1);
     // return all the stuff up to the last separator
-    char *check = strrchr(parent.str, PTH_SEP_INT);
-    if (check == NULL) return parent;
+    char *check = strrchr(p->str, PTH_SEP_INT); // DO NOT FREE THIS PTR
+    if (check == NULL) return; 
     size_t m = strlen(check);
     assert(m < n);
-    str_chop_last(parent.str, m);
-    return parent;
+    str_chop_last(p->str, m);
 }
 
 enum _pth_kind {
@@ -125,7 +123,7 @@ enum _pth_kind {
     PTH_KIND_THERE,
 };
 
-bool _pth_is_kind(Path *p, enum _pth_kind k) {
+PTH_DEF bool _pth_is_kind(Path *p, enum _pth_kind k) {
     struct stat s;
     int is_there = stat(p->str, &s);
     if (is_there != 0) return false;
@@ -137,26 +135,23 @@ bool _pth_is_kind(Path *p, enum _pth_kind k) {
     }
 }
 
-bool pth_is_file(Path *p) {
+PTH_DEF bool pth_is_file(Path *p) {
     return _pth_is_kind(p, PTH_KIND_FILE);
 }
 
-bool pth_is_dir(Path *p) {
+PTH_DEF bool pth_is_dir(Path *p) {
     return _pth_is_kind(p, PTH_KIND_DIR);
 }
 
-bool pth_exists(Path *p) {
+PTH_DEF bool pth_exists(Path *p) {
     return _pth_is_kind(p, PTH_KIND_THERE);
 }
 
 
-Path pth_join(Path *p, char *str) {
-    Path joined = pth_copy(p);
-    size_t len = strlen(joined.str);
-    pth_checked_snprintf(joined.str+len, "%s%s", PTH_SEP, str);
-    return joined;
+PTH_DEF void pth_join(Path *p, char *str) {
+    size_t len = strlen(p->str);
+    pth_checked_snprintf(p->str+len, "%s%s", PTH_SEP, str);
 }
-
 
 #undef PTH_PATH_MAX_SIZE
 #undef PTH_SEP
