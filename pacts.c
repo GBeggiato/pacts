@@ -50,7 +50,7 @@ PTH_DEF void str_chop_last(char *str, int n) {
     memset(str+len-n, 0, n);
 }
 
-PTH_DEF void pth_checked_snprintf(char *str, const char *restrict format, ...) {
+PTH_DEF void pth_checked_vsnprintf(char *str, const char *restrict format, ...) {
     va_list args;
     va_start(args, format);
     int r = vsnprintf(str, PTH_PATH_MAX_SIZE, format, args);
@@ -58,22 +58,20 @@ PTH_DEF void pth_checked_snprintf(char *str, const char *restrict format, ...) {
     assert((0 <= r && r+1 < PTH_PATH_MAX_SIZE) && "snprintf failed");
 }
 
-
 typedef struct Path {
     char str[PTH_PATH_MAX_SIZE];
 } Path;
 
-
 // create a "Path" from "char *"
 Path pth_new(char *name){
     Path path = {0};
-    pth_checked_snprintf(path.str, "%s", name);
+    pth_checked_vsnprintf(path.str, "%s", name);
     return path;
 }
 
 Path pth_copy(Path *p) {
     Path new = {0};
-    memcpy(&new, p, sizeof(*p));
+    memcpy(&new, p, sizeof(Path));
     return new;
 }
 
@@ -92,7 +90,7 @@ Path pth_cwd(void) {
 PTH_DEF void pth_resolve(Path *p) {
     char *resolved = realpath(p->str, NULL);
     assert(resolved != NULL && "realpath failed");
-    pth_checked_snprintf(p->str, "%s", resolved);
+    pth_checked_vsnprintf(p->str, "%s", resolved);
     free(resolved);
 }
 
@@ -117,13 +115,13 @@ PTH_DEF void pth_parent(Path *p) {
     str_chop_last(p->str, m);
 }
 
-enum _pth_kind {
+enum PTH_KIND {
     PTH_KIND_FILE = 1,
     PTH_KIND_DIR,
     PTH_KIND_THERE,
 };
 
-PTH_DEF bool _pth_is_kind(Path *p, enum _pth_kind k) {
+PTH_DEF bool pth_is_kind(Path *p, enum PTH_KIND k) {
     struct stat s;
     int is_there = stat(p->str, &s);
     if (is_there != 0) return false;
@@ -136,21 +134,20 @@ PTH_DEF bool _pth_is_kind(Path *p, enum _pth_kind k) {
 }
 
 PTH_DEF bool pth_is_file(Path *p) {
-    return _pth_is_kind(p, PTH_KIND_FILE);
+    return pth_is_kind(p, PTH_KIND_FILE);
 }
 
 PTH_DEF bool pth_is_dir(Path *p) {
-    return _pth_is_kind(p, PTH_KIND_DIR);
+    return pth_is_kind(p, PTH_KIND_DIR);
 }
 
 PTH_DEF bool pth_exists(Path *p) {
-    return _pth_is_kind(p, PTH_KIND_THERE);
+    return pth_is_kind(p, PTH_KIND_THERE);
 }
-
 
 PTH_DEF void pth_join(Path *p, char *str) {
     size_t len = strlen(p->str);
-    pth_checked_snprintf(p->str+len, "%s%s", PTH_SEP, str);
+    pth_checked_vsnprintf(p->str+len, "%s%s", PTH_SEP, str);
 }
 
 #undef PTH_PATH_MAX_SIZE
