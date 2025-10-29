@@ -10,13 +10,9 @@ int main(void) {
     Path path = pth_cwd();
 
     pth_parent(&path);
-
     pth_join(&path, "pacts");
     pth_join(&path, "pacts.h");
-    pth_debug(&path);
-
-    printf("%s\n", pth_name(&path));
-    printf("%s\n", pth_suffix(&path));
+    pth_suffix_change(&path, ".html");
     pth_debug(&path);
     
     return 0;

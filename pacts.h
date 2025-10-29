@@ -30,6 +30,7 @@
 #endif
 
 #define PTH_SEP_INT ((int) *PTH_SEP)
+#define PTH_DOT_INT ((int) *".")
 
 #ifndef PTH_DEF
     #define PTH_DEF static inline
@@ -57,6 +58,8 @@ PTH_DEF bool pth_exists(Path *p);
 PTH_DEF void pth_join(Path *p, char *str);
 PTH_DEF char *pth_name(Path *p);
 PTH_DEF char *pth_suffix(Path *p);
+PTH_DEF void pth_name_change(Path *p, char *name);
+PTH_DEF void pth_suffix_change(Path *p, char *suffix);
 
 #endif // PTH_H_
 
@@ -150,9 +153,22 @@ PTH_DEF char *pth_name(Path *p) {
 
 PTH_DEF char *pth_suffix(Path *p) {
     pth_remove_sep_if_last(p->str);
-    char *check = strrchr(p->str, (int) *"."); // DO NOT FREE THIS PTR
+    char *check = strrchr(p->str, PTH_DOT_INT); // DO NOT FREE THIS PTR
     assert(check != NULL && "pth_suffix failed");
     return check;
+}
+
+PTH_DEF void pth_name_change(Path *p, char *name) {
+    pth_parent(p);
+    pth_join(p, name);
+}
+
+PTH_DEF void pth_suffix_change(Path *p, char *suffix) {
+    pth_remove_sep_if_last(p->str);
+    char *check = strrchr(p->str, PTH_DOT_INT); // DO NOT FREE THIS PTR
+    assert(check != NULL && "pth_suffix_change failed");
+    pth_str_chop_last(p->str, strlen(pth_suffix(p)));
+    pth_checked_vsnprintf(p->str+strlen(p->str), "%s", suffix);
 }
 
 enum PTH_KIND {
@@ -191,8 +207,8 @@ PTH_DEF void pth_join(Path *p, char *str) {
 
 #endif // PTH_IMPLEMENTATION
 
-
 #undef PTH_DEF
 #undef PTH_PATH_MAX_SIZE
 #undef PTH_SEP
 #undef PTH_SEP_INT
+#undef PTH_DOT_INT
