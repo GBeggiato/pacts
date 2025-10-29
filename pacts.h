@@ -44,10 +44,10 @@ typedef struct Path {
 } Path;
 
 // HEADER PART
-Path pth_new(char *name);
-Path pth_copy(Path *p);
+PTH_DEF Path pth_new(char *name);
+PTH_DEF Path pth_copy(Path *p);
 PTH_DEF void pth_debug(Path *p);
-Path pth_cwd(void);
+PTH_DEF Path pth_cwd(void);
 PTH_DEF void pth_resolve(Path *p);
 PTH_DEF bool pth_is_absolute(Path *p);
 PTH_DEF void pth_parent(Path *p);
@@ -55,6 +55,8 @@ PTH_DEF bool pth_is_file(Path *p);
 PTH_DEF bool pth_is_dir(Path *p);
 PTH_DEF bool pth_exists(Path *p);
 PTH_DEF void pth_join(Path *p, char *str);
+PTH_DEF char *pth_name(Path *p);
+PTH_DEF char *pth_suffix(Path *p);
 
 #endif // PTH_H_
 
@@ -83,13 +85,13 @@ PTH_DEF void pth_checked_vsnprintf(char *str, const char *restrict format, ...) 
 }
 
 // create a "Path" from "char *"
-Path pth_new(char *name){
+PTH_DEF Path pth_new(char *name){
     Path path = {0};
     pth_checked_vsnprintf(path.str, "%s", name);
     return path;
 }
 
-Path pth_copy(Path *p) {
+PTH_DEF Path pth_copy(Path *p) {
     Path out = {0};
     memcpy(&out, p, sizeof(Path));
     return out;
@@ -99,7 +101,7 @@ PTH_DEF void pth_debug(Path *p){
     printf("%s\n", p->str);
 }
 
-Path pth_cwd(void) {
+PTH_DEF Path pth_cwd(void) {
     char *cwd = getcwd(NULL, PTH_PATH_MAX_SIZE);
     assert(cwd != NULL && "getcwd failed");
     Path pcwd = pth_new(cwd);
@@ -122,17 +124,35 @@ PTH_DEF bool pth_is_absolute(Path *p) {
     return ans;
 }
 
+void pth_remove_sep_if_last(char *str) {
+    size_t n = strlen(str);
+    char last_char = str[n-1];
+    if (last_char == PTH_SEP_INT) pth_str_chop_last(str, 1);
+}
+
 PTH_DEF void pth_parent(Path *p) {
-    // delete last char if it's the separator
-    size_t n = strlen(p->str);
-    char last_char = p->str[n-1];
-    if (last_char == PTH_SEP_INT) pth_str_chop_last(p->str, 1);
+    pth_remove_sep_if_last(p->str);
     // return all the stuff up to the last separator
     char *check = strrchr(p->str, PTH_SEP_INT); // DO NOT FREE THIS PTR
-    if (check == NULL) return; 
+    if (check == NULL) return;
     size_t m = strlen(check);
+    size_t n = strlen(p->str);
     assert(m < n);
     pth_str_chop_last(p->str, m);
+}
+
+PTH_DEF char *pth_name(Path *p) {
+    pth_remove_sep_if_last(p->str);
+    char *check = strrchr(p->str, PTH_SEP_INT); // DO NOT FREE THIS PTR
+    assert(check != NULL && "pth_name failed");
+    return check+1;
+}
+
+PTH_DEF char *pth_suffix(Path *p) {
+    pth_remove_sep_if_last(p->str);
+    char *check = strrchr(p->str, (int) *"."); // DO NOT FREE THIS PTR
+    assert(check != NULL && "pth_suffix failed");
+    return check;
 }
 
 enum PTH_KIND {
